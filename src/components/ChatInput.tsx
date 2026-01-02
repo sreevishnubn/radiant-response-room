@@ -3,6 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowUp, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ModeSelector, ChatMode } from "./ModeSelector";
+import { VoiceInput } from "./VoiceInput";
+import { AnalyzeInput } from "./AnalyzeInput";
+import { ScannerInput } from "./ScannerInput";
+import { DashboardBuilder } from "./DashboardBuilder";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -18,6 +23,7 @@ export const ChatInput = ({
   disabled,
 }: ChatInputProps) => {
   const [input, setInput] = useState("");
+  const [mode, setMode] = useState<ChatMode>("agent");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSubmit = () => {
@@ -34,6 +40,26 @@ export const ChatInput = ({
     }
   };
 
+  const handleVoiceTranscript = (text: string) => {
+    onSend(text);
+  };
+
+  const handleAnalyze = (data: { text?: string; file?: File }) => {
+    if (data.text) {
+      onSend(`[Analyze] ${data.text}`);
+    } else if (data.file) {
+      onSend(`[Analyze] Analyzing file: ${data.file.name}`);
+    }
+  };
+
+  const handleScanCapture = (imageData: string) => {
+    onSend(`[Scanner] Captured image for analysis`);
+  };
+
+  const handleDashboardSave = (widgets: any[]) => {
+    onSend(`[Dashboard] Created dashboard with ${widgets.length} widgets`);
+  };
+
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -44,8 +70,59 @@ export const ChatInput = ({
     }
   }, [input]);
 
+  // Render different input based on mode
+  if (mode === "interact") {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-lg">
+        <div className="mb-4 flex items-center gap-2">
+          <ModeSelector currentMode={mode} onModeChange={setMode} />
+          <span className="text-sm font-medium text-muted-foreground">Voice Interaction</span>
+        </div>
+        <VoiceInput onTranscript={handleVoiceTranscript} disabled={disabled} />
+      </div>
+    );
+  }
+
+  if (mode === "analyze") {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-lg">
+        <div className="mb-4 flex items-center gap-2">
+          <ModeSelector currentMode={mode} onModeChange={setMode} />
+          <span className="text-sm font-medium text-muted-foreground">Data Analysis</span>
+        </div>
+        <AnalyzeInput onAnalyze={handleAnalyze} isLoading={isLoading} disabled={disabled} />
+      </div>
+    );
+  }
+
+  if (mode === "scanner") {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-lg">
+        <div className="mb-4 flex items-center gap-2">
+          <ModeSelector currentMode={mode} onModeChange={setMode} />
+          <span className="text-sm font-medium text-muted-foreground">Camera Scanner</span>
+        </div>
+        <ScannerInput onCapture={handleScanCapture} disabled={disabled} />
+      </div>
+    );
+  }
+
+  if (mode === "dashboard") {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-4 shadow-lg">
+        <div className="mb-4 flex items-center gap-2">
+          <ModeSelector currentMode={mode} onModeChange={setMode} />
+          <span className="text-sm font-medium text-muted-foreground">Dashboard Builder</span>
+        </div>
+        <DashboardBuilder onSave={handleDashboardSave} disabled={disabled} />
+      </div>
+    );
+  }
+
+  // Default: Agent mode (chat)
   return (
     <div className="relative flex w-full items-end gap-2 rounded-2xl border border-border bg-card p-2 shadow-lg transition-all focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
+      <ModeSelector currentMode={mode} onModeChange={setMode} />
       <Textarea
         ref={textareaRef}
         value={input}
