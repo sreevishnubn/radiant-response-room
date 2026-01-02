@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,12 +14,69 @@ serve(async (req) => {
   try {
     const { messages } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
     
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // Get user preferences if authenticated
+    let userPreferences = null;
+    const authHeader = req.headers.get("authorization");
+    
+    if (authHeader && SUPABASE_URL && SUPABASE_ANON_KEY) {
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        const { data: prefs } = await supabase
+          .from("user_preferences")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        
+        userPreferences = prefs;
+        console.log("User preferences loaded:", userPreferences);
+      }
+    }
+
     console.log("Processing chat request with", messages.length, "messages");
+
+    // Build personalized system prompt
+    let preferencesContext = "";
+    if (userPreferences) {
+      const parts = [];
+      
+      if (userPreferences.favorite_sites?.length > 0) {
+        parts.push(`Favorite shopping sites: ${userPreferences.favorite_sites.join(", ")}`);
+      }
+      
+      if (userPreferences.clothing_sizes && Object.keys(userPreferences.clothing_sizes).length > 0) {
+        const sizes = Object.entries(userPreferences.clothing_sizes)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(", ");
+        parts.push(`Clothing sizes: ${sizes}`);
+      }
+      
+      if (userPreferences.preferred_categories?.length > 0) {
+        parts.push(`Preferred categories: ${userPreferences.preferred_categories.join(", ")}`);
+      }
+      
+      if (userPreferences.budget_range && Object.keys(userPreferences.budget_range).length > 0) {
+        const budget = userPreferences.budget_range;
+        if (budget.min || budget.max) {
+          parts.push(`Budget range: ${budget.min || 0} - ${budget.max || "unlimited"} ${budget.currency || "USD"}`);
+        }
+      }
+      
+      if (parts.length > 0) {
+        preferencesContext = `\n\nUser's saved preferences:\n${parts.join("\n")}\n\nUse these preferences to personalize your recommendations. If the user asks about shopping, default to their favorite sites. Suggest items in their sizes.`;
+      }
+    }
 
     const systemPrompt = `You are a helpful AI task assistant. Your role is to understand user requests and help them accomplish tasks.
 
@@ -34,7 +92,9 @@ For tasks like shopping:
 - Help compare options
 - Provide guidance on completing the purchase
 
-Be conversational, helpful, and proactive in gathering the information needed to complete the task. Always confirm important details before proceeding.`;
+IMPORTANT: When the user tells you their preferences (like favorite sites, sizes, or budget), acknowledge that you'll remember them and suggest they can be saved to their profile.
+
+Be conversational, helpful, and proactive in gathering the information needed to complete the task. Always confirm important details before proceeding.${preferencesContext}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
