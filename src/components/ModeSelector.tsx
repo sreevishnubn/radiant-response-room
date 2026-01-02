@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plus, 
   Bot, 
+  MessageCircle,
   Mic, 
   BarChart3, 
   Camera, 
@@ -11,7 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type ChatMode = "agent" | "interact" | "analyze" | "scanner" | "dashboard";
+export type ChatMode = "chat" | "agent" | "interact" | "analyze" | "scanner" | "dashboard";
 
 interface ModeSelectorProps {
   currentMode: ChatMode;
@@ -19,7 +20,8 @@ interface ModeSelectorProps {
 }
 
 const modes = [
-  { id: "agent" as ChatMode, label: "Agent", icon: Bot, description: "AI Chat Assistant" },
+  { id: "chat" as ChatMode, label: "Chat", icon: MessageCircle, description: "Simple Conversation" },
+  { id: "agent" as ChatMode, label: "Agent", icon: Bot, description: "Task Execution AI" },
   { id: "interact" as ChatMode, label: "Interact", icon: Mic, description: "Voice Interaction" },
   { id: "analyze" as ChatMode, label: "Analyze", icon: BarChart3, description: "Data Analysis" },
   { id: "scanner" as ChatMode, label: "Scanner", icon: Camera, description: "Camera Scanner" },
