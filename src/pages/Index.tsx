@@ -1,15 +1,23 @@
 import { useRef, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatMessage } from "@/components/ChatMessage";
 import { ChatInput } from "@/components/ChatInput";
 import { EmptyState } from "@/components/EmptyState";
 import { TypingIndicator } from "@/components/TypingIndicator";
+import { PreferencesPanel } from "@/components/PreferencesPanel";
 import { useChat } from "@/hooks/useChat";
+import { useAuth } from "@/hooks/useAuth";
+import { Settings, LogIn, LogOut } from "lucide-react";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [prefsOpen, setPrefsOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { user, loading: authLoading, signOut } = useAuth();
 
   const {
     conversations,
@@ -53,6 +61,41 @@ const Index = () => {
 
       {/* Main chat area */}
       <main className="flex flex-1 flex-col overflow-hidden">
+        {/* Header with auth */}
+        <header className="flex items-center justify-end gap-2 border-b border-border px-4 py-2">
+          {authLoading ? (
+            <div className="h-8 w-20 animate-pulse rounded bg-muted" />
+          ) : user ? (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPrefsOpen(true)}
+                className="gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                Preferences
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => signOut()}
+                className="gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
+              </Button>
+            </>
+          ) : (
+            <Button variant="ghost" size="sm" asChild className="gap-2">
+              <Link to="/auth">
+                <LogIn className="h-4 w-4" />
+                Sign In
+              </Link>
+            </Button>
+          )}
+        </header>
+
         {/* Messages area */}
         <ScrollArea
           ref={scrollRef}
@@ -84,6 +127,15 @@ const Index = () => {
           </div>
         </div>
       </main>
+
+      {/* Preferences Panel */}
+      {user && (
+        <PreferencesPanel
+          userId={user.id}
+          isOpen={prefsOpen}
+          onClose={() => setPrefsOpen(false)}
+        />
+      )}
     </div>
   );
 };

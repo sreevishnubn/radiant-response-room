@@ -14,7 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          budget_range: Json | null
+          clothing_sizes: Json | null
+          created_at: string | null
+          favorite_sites: string[] | null
+          id: string
+          preferred_categories: string[] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          budget_range?: Json | null
+          clothing_sizes?: Json | null
+          created_at?: string | null
+          favorite_sites?: string[] | null
+          id?: string
+          preferred_categories?: string[] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          budget_range?: Json | null
+          clothing_sizes?: Json | null
+          created_at?: string | null
+          favorite_sites?: string[] | null
+          id?: string
+          preferred_categories?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
