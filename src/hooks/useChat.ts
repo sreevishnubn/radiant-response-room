@@ -3,7 +3,10 @@ import { Message } from "@/components/ChatMessage";
 import { Conversation } from "@/components/Sidebar";
 import { toast } from "sonner";
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+const AGENT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/simple-chat`;
+
+export type ChatModeType = "chat" | "agent";
 
 export const useChat = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -25,7 +28,7 @@ export const useChat = () => {
   }, []);
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, mode: ChatModeType = "chat") => {
       let convId = activeConversationId;
 
       // Create new conversation if none exists
@@ -62,8 +65,11 @@ export const useChat = () => {
       let assistantContent = "";
       const assistantId = crypto.randomUUID();
 
+      // Choose endpoint based on mode
+      const endpoint = mode === "agent" ? AGENT_URL : CHAT_URL;
+
       try {
-        const response = await fetch(CHAT_URL, {
+        const response = await fetch(endpoint, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

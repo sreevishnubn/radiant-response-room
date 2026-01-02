@@ -102,7 +102,7 @@ const Index = () => {
           className="flex-1 scrollbar-thin"
         >
           {messages.length === 0 ? (
-            <EmptyState onSuggestionClick={sendMessage} />
+            <EmptyState onSuggestionClick={(msg) => sendMessage(msg, "chat")} />
           ) : (
             <div className="pb-32">
               {messages.map((message) => (

@@ -11,7 +11,7 @@ import { DashboardBuilder } from "./DashboardBuilder";
 import { FileAttachment, AttachedFile } from "./FileAttachment";
 
 interface ChatInputProps {
-  onSend: (message: string, attachments?: AttachedFile[]) => void;
+  onSend: (message: string, mode: "chat" | "agent") => void;
   onStop?: () => void;
   isLoading?: boolean;
   disabled?: boolean;
@@ -24,13 +24,15 @@ export const ChatInput = ({
   disabled,
 }: ChatInputProps) => {
   const [input, setInput] = useState("");
-  const [mode, setMode] = useState<ChatMode>("agent");
+  const [mode, setMode] = useState<ChatMode>("chat");
   const [attachments, setAttachments] = useState<AttachedFile[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSubmit = () => {
     if ((input.trim() || attachments.length > 0) && !isLoading && !disabled) {
-      onSend(input.trim(), attachments.length > 0 ? attachments : undefined);
+      // For chat and agent modes, pass the mode
+      const chatMode = mode === "chat" || mode === "agent" ? mode : "chat";
+      onSend(input.trim(), chatMode);
       setInput("");
       // Clean up previews
       attachments.forEach((a) => {
@@ -60,23 +62,23 @@ export const ChatInput = ({
   };
 
   const handleVoiceTranscript = (text: string) => {
-    onSend(text);
+    onSend(text, "chat");
   };
 
   const handleAnalyze = (data: { text?: string; file?: File }) => {
     if (data.text) {
-      onSend(`[Analyze] ${data.text}`);
+      onSend(`[Analyze] ${data.text}`, "agent");
     } else if (data.file) {
-      onSend(`[Analyze] Analyzing file: ${data.file.name}`);
+      onSend(`[Analyze] Analyzing file: ${data.file.name}`, "agent");
     }
   };
 
   const handleScanCapture = (imageData: string) => {
-    onSend(`[Scanner] Captured image for analysis`);
+    onSend(`[Scanner] Captured image for analysis`, "agent");
   };
 
   const handleDashboardSave = (widgets: any[]) => {
-    onSend(`[Dashboard] Created dashboard with ${widgets.length} widgets`);
+    onSend(`[Dashboard] Created dashboard with ${widgets.length} widgets`, "agent");
   };
 
   useEffect(() => {
