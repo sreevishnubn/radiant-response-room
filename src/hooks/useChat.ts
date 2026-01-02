@@ -1,19 +1,16 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Message } from "@/components/ChatMessage";
 import { Conversation } from "@/components/Sidebar";
+import { toast } from "sonner";
 
-// Simulated AI responses
-const aiResponses = [
-  "That's a great question! Let me think about it...\n\nBased on my understanding, I would say that the key factors to consider are:\n\n1. **Context matters** - The specific situation you're in will greatly influence the best approach.\n\n2. **Start small** - It's often better to begin with manageable steps and build from there.\n\n3. **Iterate and improve** - Don't expect perfection on the first try. Learning from each attempt is valuable.\n\nWould you like me to elaborate on any of these points?",
-  "I'd be happy to help you with that! Here's what I think:\n\nThe approach you're considering is definitely viable. There are several ways to accomplish this, and I'll outline the most effective method.\n\nFirst, you'll want to consider your goals and constraints. Once those are clear, the path forward becomes much clearer.\n\nIs there a specific aspect you'd like me to focus on?",
-  "That's an interesting perspective! Let me share my thoughts:\n\n**Key insights:**\n- Innovation often comes from unexpected places\n- Collaboration tends to produce better results than solo efforts\n- Persistence is usually more important than initial talent\n\nThe research in this area suggests that a balanced approach works best. Would you like me to provide more specific recommendations?",
-];
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 export const useChat = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string>();
   const [isLoading, setIsLoading] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const createNewConversation = useCallback(() => {
     const newConv: Conversation = {
@@ -53,20 +50,102 @@ export const useChat = () => {
       };
       setMessages((prev) => [...prev, userMessage]);
 
-      // Simulate AI response
-      setIsLoading(true);
-      await new Promise((resolve) => setTimeout(resolve, 1000 + Math.random() * 1500));
+      // Prepare messages for API
+      const apiMessages = [...messages, userMessage].map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
 
-      const aiMessage: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: aiResponses[Math.floor(Math.random() * aiResponses.length)],
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiMessage]);
-      setIsLoading(false);
+      setIsLoading(true);
+      abortControllerRef.current = new AbortController();
+
+      let assistantContent = "";
+      const assistantId = crypto.randomUUID();
+
+      try {
+        const response = await fetch(CHAT_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ messages: apiMessages }),
+          signal: abortControllerRef.current.signal,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Request failed with status ${response.status}`);
+        }
+
+        if (!response.body) {
+          throw new Error("No response body");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let textBuffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          textBuffer += decoder.decode(value, { stream: true });
+
+          let newlineIndex: number;
+          while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+            let line = textBuffer.slice(0, newlineIndex);
+            textBuffer = textBuffer.slice(newlineIndex + 1);
+
+            if (line.endsWith("\r")) line = line.slice(0, -1);
+            if (line.startsWith(":") || line.trim() === "") continue;
+            if (!line.startsWith("data: ")) continue;
+
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr === "[DONE]") break;
+
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const delta = parsed.choices?.[0]?.delta?.content;
+              if (delta) {
+                assistantContent += delta;
+                setMessages((prev) => {
+                  const lastMsg = prev[prev.length - 1];
+                  if (lastMsg?.id === assistantId) {
+                    return prev.map((m) =>
+                      m.id === assistantId ? { ...m, content: assistantContent } : m
+                    );
+                  }
+                  return [
+                    ...prev,
+                    {
+                      id: assistantId,
+                      role: "assistant" as const,
+                      content: assistantContent,
+                      timestamp: new Date(),
+                    },
+                  ];
+                });
+              }
+            } catch {
+              textBuffer = line + "\n" + textBuffer;
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        if ((error as Error).name === "AbortError") {
+          console.log("Request aborted");
+        } else {
+          console.error("Chat error:", error);
+          toast.error((error as Error).message || "Failed to send message");
+        }
+      } finally {
+        setIsLoading(false);
+        abortControllerRef.current = null;
+      }
     },
-    [activeConversationId, createNewConversation]
+    [activeConversationId, createNewConversation, messages]
   );
 
   const selectConversation = useCallback((id: string) => {
@@ -87,6 +166,9 @@ export const useChat = () => {
   );
 
   const stopGeneration = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     setIsLoading(false);
   }, []);
 
