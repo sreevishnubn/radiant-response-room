@@ -1,0 +1,28 @@
+[
+  {
+    "id": "builtin-search-click-first",
+    "name": "Search & click first result",
+    "description": "Open Google, search for a query and click the first result (example)",
+    "actions": [
+      { "type": "eval", "script": "document.location='https://www.google.com'" },
+      { "type": "wait", "ms": 1500 },
+      { "type": "fill", "selector": "input[name='q']", "value": "{query}" },
+      { "type": "wait", "ms": 500 },
+      { "type": "eval", "script": "document.querySelector('form').submit()" },
+      { "type": "wait", "ms": 2000 },
+      { "type": "click", "selector": 'a', "ms": 500 }
+    ]
+  },
+  {
+    "id": "builtin-screenshot",
+    "name": "Full page screenshot",
+    "description": "Just take a full page screenshot of the URL",
+    "actions": []
+  },
+  {
+    "id": "builtin-click-first-link",
+    "name": "Click first link",
+    "description": "Clicks the first <a> on the page",
+    "actions": [{ "type": "click", "selector": "a", "ms": 500 }]
+  }
+]

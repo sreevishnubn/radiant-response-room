@@ -76,6 +76,9 @@ const Index = () => {
                 <Settings className="h-4 w-4" />
                 Preferences
               </Button>
+              <Button variant="ghost" size="sm" asChild className="gap-2">
+                <Link to="/agent">Agent</Link>
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
